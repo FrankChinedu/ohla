@@ -1,0 +1,28 @@
+{
+  "name": "ohla",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev:frontend & npm run dev:backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "cd backend && cargo watch -x run",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "cd backend && cargo build --release",
+    "start:frontend": "npm run start --workspace=frontend",
+    "start:backend": "cd backend && cargo run --release",
+    "lint": "npm run lint --workspace=frontend",
+    "clean": "rm -rf node_modules frontend/node_modules backend/target"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
