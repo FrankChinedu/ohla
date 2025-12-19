@@ -1,18 +1,9 @@
 use axum::{
-    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde::Serialize;
 
-/// Error response structure returned to clients
-#[derive(Serialize)]
-pub struct ErrorResponse {
-    pub error: String,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<String>,
-}
+use crate::responses::ApiResponse;
 
 /// Application error types
 #[derive(Debug)]
@@ -93,13 +84,14 @@ impl AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = self.status_code();
-        let error_response = ErrorResponse {
-            error: self.error_type().to_string(),
-            message: self.message(),
-            details: self.details(),
-        };
+        let error_response = ApiResponse::<()>::error(
+            status,
+            self.error_type(),
+            self.message(),
+            self.details(),
+        );
 
-        (status, Json(error_response)).into_response()
+        error_response.into_response()
     }
 }
 
