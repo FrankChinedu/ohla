@@ -1,4 +1,5 @@
-use reqwest::Client;
+use base64::Engine;
+use reqwest::{header, Client};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -7,8 +8,6 @@ use crate::errors::AppError;
 
 pub struct BitcoinRpc {
     url: String,
-    username: String,
-    password: String,
     client: Client,
 }
 
@@ -38,11 +37,33 @@ pub struct BlockchainInfo {
 
 impl BitcoinRpc {
     pub fn new(url: String, username: String, password: String) -> Self {
+        // Create authorization header value
+        let auth = format!("{}:{}", username, password);
+        let auth_header = format!(
+            "Basic {}",
+            base64::engine::general_purpose::STANDARD.encode(auth.as_bytes())
+        );
+
+        // Build client with default headers
+        let mut headers = header::HeaderMap::new();
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_str(&auth_header)
+                .expect("Invalid authorization header"),
+        );
+        headers.insert(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json"),
+        );
+
+        let client = Client::builder()
+            .default_headers(headers)
+            .build()
+            .expect("Failed to build HTTP client");
+
         Self {
             url,
-            username,
-            password,
-            client: Client::new(),
+            client,
         }
     }
 
@@ -57,7 +78,6 @@ impl BitcoinRpc {
         let response = self
             .client
             .post(&self.url)
-            .basic_auth(&self.username, Some(&self.password))
             .json(&payload)
             .send()
             .await
