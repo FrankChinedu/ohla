@@ -4,7 +4,9 @@ mod routes;
 mod services;
 mod state;
 mod utils;
+mod domain;
 
+use crate::config::env::load_env;
 use crate::app::create_app;
 use crate::state::app_state::AppState;
 use std::net::SocketAddr;
@@ -12,6 +14,9 @@ use tokio::signal;
 
 #[tokio::main]
 async fn main() {
+    // Load and validate environment variables
+    load_env();
+
     let app_state = AppState::initialize();
     let app = create_app(app_state);
 

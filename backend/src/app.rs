@@ -6,7 +6,7 @@ use crate::routes;
 use crate::state::app_state::AppState;
 
 pub fn create_app(app_state: AppState) -> Router {
-  let api_routes = Router::new().merge(routes::health::routes());
+    let api_routes = Router::new().merge(routes::health::routes());
     Router::new()
         // Routes nested under /api prefix
         .nest("/api", api_routes)
