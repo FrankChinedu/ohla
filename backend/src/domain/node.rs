@@ -7,6 +7,8 @@ pub struct NodeInfo {
     pub best_block_hash: String,
     pub sync: SyncInfo,
     pub pruned: bool,
+    pub difficulty: f64,
+    pub headers: u64,
     pub verification_progress: f64,
     pub backend: BackendInfo,
 }

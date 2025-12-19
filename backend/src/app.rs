@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::Router;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -6,7 +8,11 @@ use crate::routes;
 use crate::state::app_state::AppState;
 
 pub fn create_app(app_state: AppState) -> Router {
-    let api_routes = Router::new().merge(routes::health::routes());
+    let app_state = Arc::new(app_state);
+    let api_routes = Router::new()
+        .merge(routes::health::routes())
+        .merge(routes::node::routes());
+
     Router::new()
         // Routes nested under /api prefix
         .nest("/api", api_routes)

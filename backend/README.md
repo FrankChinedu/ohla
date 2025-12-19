@@ -54,15 +54,40 @@ cargo watch -c -w src -x run
 All routes are prefixed with `/api`:
 
 - `GET /api/health` - Health check endpoint
+- `GET /api/node/info` - Get Bitcoin node information (blockchain info)
+
+## Configuration
+
+Create a `.env` file in the project root with your Bitcoin node credentials:
+
+```env
+BTC_RPC_URL=http://127.0.0.1:18443
+BTC_RPC_USER=your_rpc_username
+BTC_RPC_PASS=your_rpc_password
+```
+
+For regtest:
+- Default RPC port: `18443`
+- For mainnet: `8332`
+- For testnet: `18332`
 
 ## Project Structure
 
 ```
 src/
-├── app.rs          # Application setup and routing
-├── main.rs         # Entry point
-├── routes/         # API route handlers
-│   └── health.rs   # Health check routes
-└── state/          # Application state management
+├── app.rs              # Application setup and routing
+├── main.rs             # Entry point
+├── config/             # Configuration management
+│   ├── bitcoin.rs      # Bitcoin RPC configuration
+│   ├── constants.rs    # Environment variable constants
+│   └── env.rs          # Environment loading
+├── domain/             # Domain models
+│   └── node.rs         # Node information models
+├── routes/             # API route handlers
+│   ├── health.rs       # Health check routes
+│   └── node.rs         # Node info routes
+├── services/           # Business logic
+│   └── bitcoin_rpc.rs  # Bitcoin RPC client
+└── state/              # Application state management
     └── app_state.rs
 ```
