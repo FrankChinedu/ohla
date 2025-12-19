@@ -1,10 +1,11 @@
 mod app;
 mod config;
+mod domain;
+mod errors;
 mod routes;
 mod services;
 mod state;
 mod utils;
-mod domain;
 
 use crate::config::env::load_env;
 use crate::app::create_app;

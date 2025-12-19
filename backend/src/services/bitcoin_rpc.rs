@@ -3,6 +3,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::domain::node::NodeInfo;
+use crate::errors::AppError;
 
 pub struct BitcoinRpc {
     url: String,
@@ -45,7 +46,7 @@ impl BitcoinRpc {
         }
     }
 
-    pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, String> {
+    pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, AppError> {
         let payload = json!({
             "jsonrpc": "1.0",
             "id": "getblockchaininfo",
@@ -60,23 +61,26 @@ impl BitcoinRpc {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| format!("Failed to send request: {}", e))?;
+            .map_err(|e| AppError::BitcoinRpcConnection(e.to_string()))?;
 
         let rpc_response: RpcResponse<BlockchainInfo> = response
             .json()
             .await
-            .map_err(|e| format!("Failed to parse response: {}", e))?;
+            .map_err(|e| AppError::BitcoinRpcParse(e.to_string()))?;
 
         if let Some(error) = rpc_response.error {
-            return Err(format!("RPC error {}: {}", error.code, error.message));
+            return Err(AppError::BitcoinRpcError {
+                code: error.code,
+                message: error.message,
+            });
         }
 
         rpc_response
             .result
-            .ok_or_else(|| "No result in response".to_string())
+            .ok_or(AppError::BitcoinRpcNoResult)
     }
 
-    pub async fn get_node_info(&self) -> Result<NodeInfo, String> {
+    pub async fn get_node_info(&self) -> Result<NodeInfo, AppError> {
         let blockchain_info = self.get_blockchain_info().await?;
 
         Ok(NodeInfo {
