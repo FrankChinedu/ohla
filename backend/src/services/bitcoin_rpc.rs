@@ -94,6 +94,37 @@ impl BitcoinRpc {
         rpc_response.result.ok_or(AppError::BitcoinRpcNoResult)
     }
 
+    pub async fn get_block_count(&self) -> Result<u64, AppError> {
+        let payload = json!({
+            "jsonrpc": "1.0",
+            "id": "getblockcount",
+            "method": "getblockcount",
+            "params": []
+        });
+
+        let response = self
+            .client
+            .post(&self.url)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AppError::BitcoinRpcConnection(e.to_string()))?;
+
+        let rpc_response: RpcResponse<u64> = response
+            .json()
+            .await
+            .map_err(|e| AppError::BitcoinRpcParse(e.to_string()))?;
+
+        if let Some(error) = rpc_response.error {
+            return Err(AppError::BitcoinRpcError {
+                code: error.code,
+                message: error.message,
+            });
+        }
+
+        rpc_response.result.ok_or(AppError::BitcoinRpcNoResult)
+    }
+
     pub async fn get_node_info(&self) -> Result<NodeInfo, AppError> {
         let blockchain_info = self.get_blockchain_info().await?;
 

@@ -24,3 +24,9 @@ pub struct BackendInfo {
     pub version: String,
     pub node_type: &'static str,
 }
+
+#[derive(Serialize)]
+pub struct BlockCount {
+    pub block_count: u64,
+}
+
