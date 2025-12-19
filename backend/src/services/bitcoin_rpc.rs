@@ -1,5 +1,5 @@
 use base64::Engine;
-use reqwest::{header, Client};
+use reqwest::{Client, header};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -48,8 +48,7 @@ impl BitcoinRpc {
         let mut headers = header::HeaderMap::new();
         headers.insert(
             header::AUTHORIZATION,
-            header::HeaderValue::from_str(&auth_header)
-                .expect("Invalid authorization header"),
+            header::HeaderValue::from_str(&auth_header).expect("Invalid authorization header"),
         );
         headers.insert(
             header::CONTENT_TYPE,
@@ -61,10 +60,7 @@ impl BitcoinRpc {
             .build()
             .expect("Failed to build HTTP client");
 
-        Self {
-            url,
-            client,
-        }
+        Self { url, client }
     }
 
     pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, AppError> {
@@ -95,16 +91,22 @@ impl BitcoinRpc {
             });
         }
 
-        rpc_response
-            .result
-            .ok_or(AppError::BitcoinRpcNoResult)
+        rpc_response.result.ok_or(AppError::BitcoinRpcNoResult)
     }
 
     pub async fn get_node_info(&self) -> Result<NodeInfo, AppError> {
         let blockchain_info = self.get_blockchain_info().await?;
 
+        let network = match blockchain_info.chain.as_str() {
+            "main" => "mainnet",
+            "test" => "testnet",
+            "signet" => "signet",
+            "regtest" => "regtest",
+            _ => "unknown",
+        };
+
         Ok(NodeInfo {
-            network: blockchain_info.chain,
+            network: network.to_string(),
             block_height: blockchain_info.blocks,
             best_block_hash: blockchain_info.bestblockhash,
             difficulty: blockchain_info.difficulty,

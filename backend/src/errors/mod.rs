@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Serialize;
 
@@ -69,9 +69,7 @@ impl AppError {
             AppError::BitcoinRpcParse(msg) => {
                 format!("Failed to parse Bitcoin RPC response: {}", msg)
             }
-            AppError::BitcoinRpcNoResult => {
-                "Bitcoin RPC returned no result".to_string()
-            }
+            AppError::BitcoinRpcNoResult => "Bitcoin RPC returned no result".to_string(),
             AppError::ConfigError(msg) => {
                 format!("Configuration error: {}", msg)
             }

@@ -7,8 +7,8 @@ mod services;
 mod state;
 mod utils;
 
-use crate::config::env::load_env;
 use crate::app::create_app;
+use crate::config::env::load_env;
 use crate::state::app_state::AppState;
 use std::net::SocketAddr;
 use tokio::signal;
