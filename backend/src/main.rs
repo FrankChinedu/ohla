@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod db;
 mod domain;
 mod errors;
 mod responses;
