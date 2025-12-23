@@ -1,6 +1,6 @@
 use crate::config::bitcoin::BitcoinConfig;
 use crate::services::bitcoin_rpc::BitcoinRpc;
-use sqlx::SqlitePool;
+use sqlx::{sqlite::{SqliteConnectOptions, SqlitePool}};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -20,12 +20,10 @@ impl AppState {
         ));
 
         // Initialize database pool
-        let db_url = std::env::var(crate::config::constants::env_keys::DATABASE_URL)
-            .unwrap_or_else(|_| "sqlite:ohla.db".to_string());
-
-        let db_pool = SqlitePool::connect(&db_url)
-            .await
-            .expect("Failed to connect to database");
+        let db_file_name = std::env::var(crate::config::constants::env_keys::DATABASE_URL)
+            .unwrap_or_else(|_| "ohla.db".to_string());
+        let option = SqliteConnectOptions::new().filename(db_file_name).create_if_missing(true);
+        let db_pool = SqlitePool::connect_with(option).await.unwrap();
 
         // Run migrations/setup
         Self::setup_database(&db_pool).await;

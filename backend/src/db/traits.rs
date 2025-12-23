@@ -31,6 +31,7 @@ pub struct NewNodeConfig {
 // ============================================================================
 
 #[derive(Debug)]
+#[allow(unused)]
 pub enum DbError {
     NotFound,
     DatabaseError(String),

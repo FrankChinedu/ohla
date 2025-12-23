@@ -120,7 +120,7 @@ pub fn routes() -> Router<Arc<AppState>> {
         .route("/config/nodes", get(list_node_configs))
         .route("/config/nodes/active", get(get_active_node_config))
         .route("/config/nodes/test", post(test_node_connection))
-        .route("/config/nodes/:id", get(get_node_config))
-        .route("/config/nodes/:id/activate", put(set_active_node_config))
-        .route("/config/nodes/:id", delete(delete_node_config))
+        .route("/config/nodes/{id}", get(get_node_config))
+        .route("/config/nodes/{id}/activate", put(set_active_node_config))
+        .route("/config/nodes/{id}", delete(delete_node_config))
 }

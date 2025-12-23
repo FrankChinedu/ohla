@@ -23,7 +23,7 @@ async fn main() {
     let app_state = AppState::initialize().await;
     let app = create_app(app_state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 9507));
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .expect("Failed to bind to address");
