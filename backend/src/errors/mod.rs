@@ -21,6 +21,10 @@ pub enum AppError {
     ConfigError(String),
     /// Internal server errors
     Internal(String),
+    /// Resource not found
+    NotFound(String),
+    /// Database errors
+    DatabaseError(String),
 }
 
 impl AppError {
@@ -33,6 +37,8 @@ impl AppError {
             AppError::BitcoinRpcNoResult => StatusCode::BAD_GATEWAY,
             AppError::ConfigError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
+            AppError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
@@ -45,6 +51,8 @@ impl AppError {
             AppError::BitcoinRpcNoResult => "bitcoin_rpc_no_result",
             AppError::ConfigError(_) => "config_error",
             AppError::Internal(_) => "internal_server_error",
+            AppError::NotFound(_) => "not_found",
+            AppError::DatabaseError(_) => "database_error",
         }
     }
 
@@ -66,6 +74,10 @@ impl AppError {
             }
             AppError::Internal(msg) => {
                 format!("Internal server error: {}", msg)
+            }
+            AppError::NotFound(msg) => msg.clone(),
+            AppError::DatabaseError(msg) => {
+                format!("Database error: {}", msg)
             }
         }
     }
@@ -102,3 +114,14 @@ impl std::fmt::Display for AppError {
 }
 
 impl std::error::Error for AppError {}
+
+// Conversion from database errors
+impl From<crate::db::DbError> for AppError {
+    fn from(err: crate::db::DbError) -> Self {
+        match err {
+            crate::db::DbError::NotFound => AppError::NotFound(err.to_string()),
+            crate::db::DbError::DatabaseError(msg) => AppError::DatabaseError(msg),
+            crate::db::DbError::InvalidInput(msg) => AppError::DatabaseError(msg),
+        }
+    }
+}

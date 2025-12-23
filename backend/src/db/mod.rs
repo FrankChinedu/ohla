@@ -1,3 +1,11 @@
-pub mod node_repository;
+pub mod traits;
+pub mod sqlite;
 
-pub use node_repository::{NodeConfigRepository, SqliteNodeConfigRepository};
+// Re-export commonly used types
+pub use traits::{
+    NodeConfigRepository,
+    NodeConfig,
+    NewNodeConfig,
+    DbError
+};
+pub use sqlite::SqliteNodeConfigRepository;

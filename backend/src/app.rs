@@ -11,7 +11,8 @@ pub fn create_app(app_state: AppState) -> Router {
     let app_state = Arc::new(app_state);
     let api_routes = Router::new()
         .merge(routes::health::routes())
-        .merge(routes::node::routes());
+        .merge(routes::node::routes())
+        .merge(routes::config::routes());
 
     Router::new()
         // Routes nested under /api prefix

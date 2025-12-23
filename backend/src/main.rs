@@ -20,7 +20,7 @@ async fn main() {
     // Load and validate environment variables
     load_env();
 
-    let app_state = AppState::initialize();
+    let app_state = AppState::initialize().await;
     let app = create_app(app_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

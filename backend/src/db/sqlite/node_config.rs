@@ -1,63 +1,10 @@
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use sqlx::{SqlitePool, Row};
+use chrono::Utc;
+use sqlx::{Row, SqlitePool};
+use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NodeConfig {
-    pub id: String,
-    pub name: String,
-    pub rpc_url: String,
-    pub rpc_user: String,
-    pub rpc_password: String,
-    pub network: String,
-    pub is_active: bool,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct NewNodeConfig {
-    pub name: String,
-    pub rpc_url: String,
-    pub rpc_user: String,
-    pub rpc_password: String,
-    pub network: String,
-}
-
-#[derive(Debug)]
-pub enum DbError {
-    NotFound,
-    DatabaseError(String),
-    InvalidInput(String),
-}
-
-impl std::fmt::Display for DbError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DbError::NotFound => write!(f, "Record not found"),
-            DbError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
-            DbError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for DbError {}
-
-impl From<sqlx::Error> for DbError {
-    fn from(err: sqlx::Error) -> Self {
-        DbError::DatabaseError(err.to_string())
-    }
-}
-
-/// Repository trait for node configuration operations
-/// This abstraction allows easy migration to different databases
-#[async_trait]
-pub trait NodeConfigRepository: Send + Sync {
-    async fn create(&self, config: NewNodeConfig) -> Result<NodeConfig, DbError>;
-    async fn get(&self, id: &str) -> Result<Option<NodeConfig>, DbError>;
-    async fn get_active(&self) -> Result<Option<NodeConfig>, DbError>;
-    async fn list(&self) -> Result<Vec<NodeConfig>, DbError>;
-    async fn set_active(&self, id: &str) -> Result<(), DbError>;
-    async fn delete(&self, id: &str) -> Result<(), DbError>;
-}
+use crate::db::traits::{DbError, NewNodeConfig, NodeConfig, NodeConfigRepository};
+use crate::services::bitcoin_rpc::BitcoinRpc;
 
 /// SQLite implementation of NodeConfigRepository
 pub struct SqliteNodeConfigRepository {
@@ -65,30 +12,13 @@ pub struct SqliteNodeConfigRepository {
 }
 
 impl SqliteNodeConfigRepository {
-    pub async fn new(database_url: &str) -> Result<Self, DbError> {
-        let pool = SqlitePool::connect(database_url).await?;
-
-        // Create table if it doesn't exist
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS node_configs (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                rpc_url TEXT NOT NULL,
-                rpc_user TEXT NOT NULL,
-                rpc_password TEXT NOT NULL,
-                network TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 0,
-                created_at INTEGER NOT NULL
-            )
-            "#
-        )
-        .execute(&pool)
-        .await?;
-
-        Ok(Self { pool })
+    /// Create a new SQLite repository from an existing pool
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
     }
 
+    /// Get the connection pool (useful for other operations)
+    #[allow(unused)]
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
@@ -97,13 +27,15 @@ impl SqliteNodeConfigRepository {
 #[async_trait]
 impl NodeConfigRepository for SqliteNodeConfigRepository {
     async fn create(&self, config: NewNodeConfig) -> Result<NodeConfig, DbError> {
-        let id = uuid::Uuid::new_v4().to_string();
-        let now = chrono::Utc::now().timestamp();
+        let id = Uuid::new_v4().to_string();
+        let now = Utc::now().timestamp();
 
-        // If this is the first config, make it active
-        let is_first = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM node_configs")
+        // Check if this is the first config
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM node_configs")
             .fetch_one(&self.pool)
-            .await? == 0;
+            .await?;
+
+        let is_first = count == 0;
 
         sqlx::query(
             r#"
@@ -139,7 +71,7 @@ impl NodeConfigRepository for SqliteNodeConfigRepository {
             SELECT id, name, rpc_url, rpc_user, rpc_password, network, is_active
             FROM node_configs
             WHERE id = ?
-            "#
+            "#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -163,7 +95,7 @@ impl NodeConfigRepository for SqliteNodeConfigRepository {
             FROM node_configs
             WHERE is_active = 1
             LIMIT 1
-            "#
+            "#,
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -185,32 +117,33 @@ impl NodeConfigRepository for SqliteNodeConfigRepository {
             SELECT id, name, rpc_url, rpc_user, rpc_password, network, is_active
             FROM node_configs
             ORDER BY created_at DESC
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| NodeConfig {
-            id: r.get("id"),
-            name: r.get("name"),
-            rpc_url: r.get("rpc_url"),
-            rpc_user: r.get("rpc_user"),
-            rpc_password: r.get("rpc_password"),
-            network: r.get("network"),
-            is_active: r.get::<i32, _>("is_active") == 1,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| NodeConfig {
+                id: r.get("id"),
+                name: r.get("name"),
+                rpc_url: r.get("rpc_url"),
+                rpc_user: r.get("rpc_user"),
+                rpc_password: r.get("rpc_password"),
+                network: r.get("network"),
+                is_active: r.get::<i32, _>("is_active") == 1,
+            })
+            .collect())
     }
 
     async fn set_active(&self, id: &str) -> Result<(), DbError> {
         // First, verify the config exists
-        let exists = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM node_configs WHERE id = ?"
-        )
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await? > 0;
+        let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM node_configs WHERE id = ?")
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await?;
 
-        if !exists {
+        if exists == 0 {
             return Err(DbError::NotFound);
         }
 
@@ -244,5 +177,20 @@ impl NodeConfigRepository for SqliteNodeConfigRepository {
         }
 
         Ok(())
+    }
+
+    async fn test_connection(&self, config: &NodeConfig) -> Result<bool, DbError> {
+        // Create a temporary RPC client with the provided config
+        let client = BitcoinRpc::new(
+            config.rpc_url.clone(),
+            config.rpc_user.clone(),
+            config.rpc_password.clone(),
+        );
+
+        // Try to get blockchain info to test the connection
+        match client.get_blockchain_info().await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
     }
 }
